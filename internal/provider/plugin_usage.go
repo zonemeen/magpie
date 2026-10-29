@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -190,14 +191,22 @@ func quotaOfPlugin(q SubscriptionQuota, u plugin.Usage) SubscriptionQuota {
 		if t, err := time.Parse(time.RFC3339, x.RunsOutAt); err == nil {
 			w.RunsOutAt, w.RunsOut = &t, x.RunsOut
 		}
-		if set := idSetOf(x.Models); set != nil {
-			w.matches = set.has
-		} else if set := idSetOf(x.NotModels); set != nil {
-			w.matches = func(model string) bool { return !set.has(model) }
-		}
+		w.matchModels(x.Models, x.NotModels)
 		q.Windows = append(q.Windows, w)
 	}
 	return q
+}
+
+// matchModels keeps a plugin's lists and their matcher together, for a
+// fresh reading and one restored from disk alike. models takes precedence.
+func (w *QuotaWindow) matchModels(models, notModels []string) {
+	w.models, w.notModels = slices.Clone(models), slices.Clone(notModels)
+	w.matches = nil
+	if set := idSetOf(w.models); set != nil {
+		w.matches = set.has
+	} else if set := idSetOf(w.notModels); set != nil {
+		w.matches = func(model string) bool { return !set.has(model) }
+	}
 }
 
 // idSet is the models a plugin's window lists (models or notModels), in

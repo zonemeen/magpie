@@ -197,6 +197,18 @@ never priced. `TestUserSameGivesTheSpecs`, `TestTaggedIDHasTheModelsSpecs`,
 
 ## Constraints and failure behavior
 
+An account's last successful allowance reading is kept in `quotas.json`
+for transient failures and routing before the first fresh read after a
+restart. A plugin window's `models` and `notModels` lists are kept with its
+routing metadata, including on aside windows, so neither the card nor its
+model scope is lost (#4168). Restoring uses the same case-insensitive and
+bare-id/`@size` matching as a fresh reading; `models` takes precedence when
+both lists are present. Existing snapshots without lists keep their original
+scope. [`quota_last.go`](../../internal/provider/quota_last.go),
+[`plugin_usage.go`](../../internal/provider/plugin_usage.go),
+`TestKeepLastPluginWindows`, `TestKeepLastLegacyWindows`,
+`TestPluginLastAllowance` (the host's usage read through startup routing).
+
 An allowance deliberately not requested (a saved Claude account outside
 its card refresh, or allowances set to *When I ask*) can use the last
 reading with `readDeferred: true`. `AsOf` and `ReadAt` still date that

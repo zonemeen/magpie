@@ -33,9 +33,11 @@ type lastQuota struct {
 }
 
 type lastWindow struct {
-	Span  time.Duration `json:"span,omitempty"`
-	Model string        `json:"model,omitempty"`
-	Aside bool          `json:"aside,omitempty"`
+	Span      time.Duration `json:"span,omitempty"`
+	Model     string        `json:"model,omitempty"`
+	Aside     bool          `json:"aside,omitempty"`
+	Models    []string      `json:"models,omitempty"`
+	NotModels []string      `json:"notModels,omitempty"`
 }
 
 func lastQuotasPath() string { return filepath.Join(filepath.Dir(Path()), "quotas.json") }
@@ -78,10 +80,11 @@ func keepLast(q SubscriptionQuota, user string) SubscriptionQuota {
 		}
 		e := lastQuota{At: time.Now(), Q: q}
 		for _, w := range q.Windows {
-			if w.matches != nil {
+			if w.matches != nil && len(w.models) == 0 && len(w.notModels) == 0 {
 				return q // a pool that can't be written down isn't kept
 			}
-			e.Spans = append(e.Spans, lastWindow{w.Span, w.Model, w.Aside})
+			e.Spans = append(e.Spans, lastWindow{Span: w.Span, Model: w.Model, Aside: w.Aside,
+				Models: w.models, NotModels: w.notModels})
 		}
 		e.Q.Error = ""
 		e.Q.AsOf = nil
@@ -175,7 +178,9 @@ func (c *lastQuotasT) reported(key string) (SubscriptionQuota, bool) {
 	copy(out.Windows, e.Q.Windows)
 	for i := range out.Windows {
 		if i < len(e.Spans) {
-			out.Windows[i].Span, out.Windows[i].Model, out.Windows[i].Aside = e.Spans[i].Span, e.Spans[i].Model, e.Spans[i].Aside
+			w, s := &out.Windows[i], e.Spans[i]
+			w.Span, w.Model, w.Aside = s.Span, s.Model, s.Aside
+			w.matchModels(s.Models, s.NotModels)
 		}
 	}
 	at := e.At

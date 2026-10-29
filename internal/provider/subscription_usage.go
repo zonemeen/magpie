@@ -113,6 +113,9 @@ type QuotaWindow struct {
 	StartsAt *time.Time `json:"startsAt,omitempty"`
 	// matches further scopes pools whose membership isn't one model word.
 	matches func(string) bool
+	// The lists behind a plugin's matches, kept with its last reading so
+	// the same scope can be restored from disk.
+	models, notModels []string
 	// partial is set on the windows of a reading that may leave some out:
 	// a Claude account only heard of as Claude Code answered (its
 	// rate_limit_event names one window at a time), never read whole by
